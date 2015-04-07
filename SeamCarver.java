@@ -33,8 +33,6 @@ public class SeamCarver
             }
         }
         Topological top = new Topological(dg);
-        for (int v : top.order()) relax(dg, v);
-        
     }
 
     public Picture picture() {
