@@ -17,10 +17,11 @@ public class SeamCarver
                 if (i == 0 || j == 0 || i == (width - 1) || j == (height - 1))
                     energyOf[i][j] = 195075.0;
                 else
-                    energyOf[i][j] = -1.0;
-        dg = new EdgeWeightedDigraph(width * (height - 1));
+                    energyOf[i][j] = energy(i, j);
+        dg = new EdgeWeightedDigraph(width * height);
+
         for (int i = 0; i < width; i++) {
-            for (int j = 0; j < (height - 2); j++) {
+            for (int j = 0; j < (height - 1); j++) {
                 int s = j * width + i;
                 dg.addEdge(new DirectedEdge(s, s + width,
                                            energy(i, j + 1)));
@@ -32,7 +33,17 @@ public class SeamCarver
                                                 energy(i + 1, j + 1)));
             }
         }
-        Topological top = new Topological(dg);
+        StdOut.printf("%s\n", dg.toString());
+
+        Bag<Integer> bl = new Bag<Integer>();
+        for (int i = (height - 1) * width; i < width * height; i++)
+            bl.add(i);
+        Bag<Integer> tp = new Bag<Integer>();
+        for (int i = 0; i < width; i++)
+            tp.add(i);
+        MultiSP sp = new MultiSP(dg, tp, bl);
+        for (DirectedEdge e : sp.pathTo(sp.shortestDest()))
+            StdOut.printf("%s\n", e.toString());
     }
 
     public Picture picture() {
@@ -89,18 +100,18 @@ public class SeamCarver
         Picture inputImg = new Picture(args[0]);
         System.out.printf("image is %d pixels wide by %d pixels high.\n",
                           inputImg.width(), inputImg.height());
-        
+
         SeamCarver sc = new SeamCarver(inputImg);
-        
-        System.out.printf("Printing energy calculated for each pixel.\n");        
 
-        for (int j = 0; j < sc.height(); j++)
-        {
-            for (int i = 0; i < sc.width(); i++)
-                System.out.printf("%9.0f ", sc.energy(i, j));
+        // System.out.printf("Printing energy calculated for each pixel.\n");
 
-            System.out.println();
-        }
+        // for (int j = 0; j < sc.height(); j++)
+        // {
+        //     for (int i = 0; i < sc.width(); i++)
+        //         System.out.printf("%9.0f ", sc.energy(i, j));
+
+        //     System.out.println();
+        // }
     }
-    
+
 }
