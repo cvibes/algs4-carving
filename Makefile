@@ -1,6 +1,6 @@
-sp:	MultiSP.java
-	checkstyle-algs4 MultiSP.java
-	javac-algs4 MultiSP.java
+sp:	SimpleSP.java
+	checkstyle-algs4 SimpleSP.java
+	javac-algs4 SimpleSP.java
 all:	SeamCarver.java
 	checkstyle-algs4 SeamCarver.java
 	javac-algs4 SeamCarver.java
