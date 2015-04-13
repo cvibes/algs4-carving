@@ -3,50 +3,37 @@ public class SeamCarver
 {
     private Picture pic;
     private double[][] energyOf;
-    private EdgeWeightedDigraph dg;
+    private    int[][] colorOf;
+    private boolean isTransposed, changed, calledByFH, calledByRH;
     private int width;
     private int height;
 
     public SeamCarver(Picture picture) {
-        pic = new Picture(picture);
-        width = pic.width();
-        height = pic.height();
-        energyOf = new double[pic.width()][pic.height()];
+        pic          = new Picture(picture);
+        width        = pic.width();
+        height       = pic.height();
+        energyOf     = new double[width][height];
+        colorOf      = new int[width][height];
+        isTransposed = false;
+        changed      = false;
+        calledByFH   = false;
+        calledByRH   = false;
         for (int i = 0; i < width; i++)
-            for (int j = 0; j < height; j++)
-                if (i == 0 || j == 0 || i == (width - 1) || j == (height - 1))
-                    energyOf[i][j] = 195075.0;
-                else
-                    energyOf[i][j] = energy(i, j);
-        dg = new EdgeWeightedDigraph(width * height);
-
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < (height - 1); j++) {
-                int s = j * width + i;
-                dg.addEdge(new DirectedEdge(s, s + width,
-                                           energy(i, j + 1)));
-                if (i > 0)
-                    dg.addEdge(new DirectedEdge(s, s + width - 1,
-                                                energy(i - 1, j + 1)));
-                if (i < (width - 1))
-                    dg.addEdge(new DirectedEdge(s, s + width + 1,
-                                                energy(i + 1, j + 1)));
+            for (int j = 0; j < height; j++) {
+                energyOf[i][j] = energy(i, j);
+                colorOf[i][j]  = pic.get(i, j).getRGB();
             }
-        }
-        StdOut.printf("%s\n", dg.toString());
-
-        Bag<Integer> bl = new Bag<Integer>();
-        for (int i = (height - 1) * width; i < width * height; i++)
-            bl.add(i);
-        Bag<Integer> tp = new Bag<Integer>();
-        for (int i = 0; i < width; i++)
-            tp.add(i);
-        MultiSP sp = new MultiSP(dg, tp, bl);
-        for (DirectedEdge e : sp.pathTo(sp.shortestDest()))
-            StdOut.printf("%s\n", e.toString());
     }
 
     public Picture picture() {
+        if (!changed) return pic;
+        Picture p = new Picture(width, height);
+        if (isTransposed) transpose();
+        for (int i = 0; i < width; i++)
+            for (int j = 0; j < height; j++)
+                p.set(i, j, new Color(colorOf[i][j]));
+        pic = p;
+        changed = false;
         return pic;
     }
 
@@ -61,11 +48,14 @@ public class SeamCarver
     public double energy(int x, int y) {
         if (x < 0 || x >= width || y < 0 || y >= height)
             throw new IllegalArgumentException();
-        if (energyOf[x][y] >= 0) return energyOf[x][y];
 
-        energyOf[x][y] = diff(pic.get(x + 1, y), pic.get(x - 1, y))
-                       + diff(pic.get(x, y + 1), pic.get(x, y - 1));
-        return energyOf[x][y];
+        if (x == 0 || y == 0 || x == (width - 1) || y == (height - 1))
+            return 195075.0;
+
+        double e = diff(pic.get(x + 1, y), pic.get(x - 1, y))
+                 + diff(pic.get(x, y + 1), pic.get(x, y - 1));
+
+        return e;
     }
 
     private double diff(Color a, Color b) {
@@ -74,35 +64,91 @@ public class SeamCarver
             + (a.getBlue()  - b.getBlue())  * (a.getBlue()  - b.getBlue());
     }
 
+    private void printEnergy() {
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++)
+                StdOut.printf("%7.0f\t", energyOf[i][j]);
+            StdOut.printf("\n");
+        }
+        StdOut.printf("\n");
+    }
+
+    private void transpose() {
+        double[][] eOf = new double[height][width];
+        int[][] cOf = new int[height][width];
+        for (int i = 0; i < width; i++)
+            for (int j = 0; j < height; j++) {
+                eOf[j][i] = energyOf[i][j];
+                cOf[j][i] = colorOf[i][j];
+            }
+        energyOf = eOf;
+        colorOf = cOf;
+        int x = width;
+        width = height;
+        height = x;
+        isTransposed = !isTransposed;
+    }
+
     public int[] findHorizontalSeam() {
-        return new int[1];
+        if (!isTransposed) transpose();
+        calledByFH = true;
+        SimpleSP sp = new SimpleSP(energyOf);
+        return sp.seam();
     }
 
     public int[] findVerticalSeam() {
-        return new int[1];
+        if (!calledByFH && isTransposed) transpose();
+        SimpleSP sp = new SimpleSP(energyOf);
+        calledByFH = false;
+        return sp.seam();
     }
 
     public void removeHorizontalSeam(int[] seam) {
+        if (!isTransposed) transpose();
+        calledByRH = true;
+        removeVerticalSeam(seam);
     }
 
     public void removeVerticalSeam(int[] seam) {
+        if (!calledByRH && isTransposed) transpose();
+        // for (int i = 0; i < seam.length; i++)
+        //     StdOut.printf("%d\t", seam[i]);
+        // StdOut.printf("\n\n");
+
+        // StdOut.printf("width is %d, height is %d\n", width - 1, height);
+        double[][] e = new double[width - 1][height];
+        int[][] c = new int[width - 1][height];
+        for (int i = 0; i < height; i++) {
+            int j = 0, k = 0;
+            while (j < width) {
+                if (j == seam[i]) j++;
+                e[k][i] = energyOf[j][i];
+                c[k++][i] = colorOf[j++][i];
+            }
+        }
+        energyOf = e;
+        width = width - 1;
+        changed = true;
+        calledByRH = false;
     }
 
-    // public static void main(String[] args) {
-    //     if (args.length < 1 || args[0] == null)
-    //         throw new IllegalArgumentException("Need picture file name");
-    //     SeamCarver sc = new SeamCarver(new Picture(args[0]));
-    //     StdOut.printf("%s has width %d and height %d\n", args[0], sc.width(),
-    //                   sc.height());
-    // }
-    public static void main(String[] args)
-    {
+    public static void main(String[] args) {
         Picture inputImg = new Picture(args[0]);
         System.out.printf("image is %d pixels wide by %d pixels high.\n",
                           inputImg.width(), inputImg.height());
 
         SeamCarver sc = new SeamCarver(inputImg);
-
+        int[] s = sc.findHorizontalSeam();
+        for (int i = 0; i < s.length; i++)
+            StdOut.printf("%d\t", s[i]);
+        StdOut.printf("\n\n");
+        sc.printEnergy();
+        // sc.removeHorizontalSeam(s);
+        // sc.printEnergy();
+        sc.removeHorizontalSeam(s);
+        sc.printEnergy();
+        // sc.transpose();
+        // sc.printEnergy();
         // System.out.printf("Printing energy calculated for each pixel.\n");
 
         // for (int j = 0; j < sc.height(); j++)
@@ -113,5 +159,4 @@ public class SeamCarver
         //     System.out.println();
         // }
     }
-
 }

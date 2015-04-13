@@ -10,7 +10,6 @@ public class SimpleSP {
         height = e[0].length;
         distTo = new double[width][height];
         edgeTo = new int[width][height];
-        StdOut.printf("width: %d, height: %d\n", width, height);
 
         for (int i = 0; i < width; i++)
             distTo[i][0] = energy[i][0];
@@ -39,12 +38,6 @@ public class SimpleSP {
                 // StdOut.printf("%d %d\n", col, row);
             }
         }
-
-        for (int i = 0; i < height; i++) {
-            for (int j = 0; j < width; j++)
-                StdOut.printf("%f\t", distTo[j][i]);
-            StdOut.printf("\n");
-        }
     }
 
     private void relax(int x, int y) {
@@ -59,9 +52,30 @@ public class SimpleSP {
 
     private void relax(int x1, int y1, int x2, int y2) {
         if (distTo[x2][y2] > distTo[x1][y1] + e[x2][y2]) {
+            double o = distTo[x2][y2];
             distTo[x2][y2] = distTo[x1][y1] + e[x2][y2];
-            edgeTo[x2][y2] = y1 * width + x1;
+            edgeTo[x2][y2] = x1;
         }
+    }
+
+    public int[] seam() {
+        int[] p = new int[height];
+        double min = Double.POSITIVE_INFINITY;
+        int lastMin = 0;
+        for (int i = 0; i < width; i++)
+            if (distTo[i][height - 2] < min) {
+                min = distTo[i][height - 2];
+                lastMin = i;
+            }
+        p[height - 1] =  lastMin;
+        if (height > 1) p[height - 2] = lastMin;
+        int i = height - 3;
+        while (i >= 0) {
+            p[i] = edgeTo[p[i+1]][i+1];
+            i--;
+        }
+
+        return p;
     }
 
     public static void main(String[] args) {
